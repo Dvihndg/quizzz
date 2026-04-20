@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizVibe — Tạo Quiz Thông Minh</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=uxvMGuLNbv8ERiq3Ru5mp_ov7XiliigjDx4-e7VJFx-nk_ii_dhxN_A2MXxBdkSTQUGZVp0HP-4WocNTEKtEeLd_98tUw-r2C2qKv1vK1K0Rf1pHHjPr2hqg-uUFu1ohzii4sCZVq45kr60eQ9VEe6i816K8cF-V-Zf-65MwdnyBO760XUHXEHTsQZdlidk-CXxOUH2YMippdBo7tNn7u7x5AtGNzEviM0vsJzqaxplKiucLN5Z1T0gyihOqCaj4q5did8JCC8bwplb8-2asjA" charset="UTF-8"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c28;
+  --surface3: #252535;
+  --accent: #7c6af7;
+  --accent2: #f76a8a;
+  --accent3: #6af7c8;
+  --text: #f0eeff;
+  --text2: #9893b8;
+  --text3: #55506e;
+  --border: rgba(124,106,247,0.2);
+  --success: #4ade80;
+  --error: #f87171;
+  --warn: #fbbf24;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* BG GRID */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(124,106,247,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,106,247,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* GLOW BLOBS */
+.blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+.blob1 { width:400px; height:400px; background:#7c6af7; top:-100px; right:-80px; }
+.blob2 { width:300px; height:300px; background:#f76a8a; bottom:-50px; left:-60px; }
+
+/* LAYOUT */
+#app { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 32px 20px 80px; }
+
+/* HEADER */
+.header {
+  text-align: center;
+  padding: 40px 0 48px;
+  animation: fadeUp 0.6s ease;
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -1px;
+}
+.logo span { font-weight: 400; }
+.tagline { color: var(--text2); font-size: 15px; margin-top: 8px; letter-spacing: 0.5px; }
+
+/* NAV TABS */
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  margin-bottom: 32px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.tab {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tab.active {
+  background: var(--surface3);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+/* PANELS */
+.panel { display: none; animation: fadeUp 0.35s ease; }
+.panel.active { display: block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+
+/* === IMPORT PANEL === */
+.import-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 60px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--surface);
+  position: relative;
+  overflow: hidden;
+}
+.import-zone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(124,106,247,0.05), rgba(247,106,138,0.05));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.import-zone:hover, .import-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+.import-zone:hover::after, .import-zone.drag-over::after { opacity: 1; }
+.import-zone input { display: none; }
+.import-icon {
+  font-size: 52px;
+  display: block;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 0 16px rgba(124,106,247,0.5));
+}
+.import-zone h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.import-zone p { color: var(--text2); font-size: 14px; line-height: 1.6; }
+.import-hint {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text2);
+  text-align: left;
+  line-height: 1.8;
+}
+.import-hint strong { color: var(--accent); }
+
+/* MANUAL INPUT */
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.form-grid { display: grid; gap: 16px; }
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 6px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124,106,247,0.15);
+}
+.field select option { background: var(--surface2); }
+.field textarea { resize: vertical; min-height: 80px; }
+
+.q-type-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.q-type-btn {
+  padding: 14px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+}
+.q-type-btn .q-icon { font-size: 24px; display: block; margin-bottom: 6px; }
+.q-type-btn:hover { border-color: var(--accent); color: var(--text); }
+.q-type-btn.active { border-color: var(--accent); background: rgba(124,106,247,0.12); color: var(--accent); }
+
+/* Multiple choice answers */
+.answer-list { display: grid; gap: 8px; }
+.answer-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.answer-item input[type=text] {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.answer-item input[type=text]:focus { border-color: var(--accent); }
+.check-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  color: transparent;
+}
+.check-btn.correct { border-color: var(--success); background: rgba(74,222,128,0.15); color: var(--success); }
+.del-btn {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.del-btn:hover { color: var(--error); border-color: var(--error); }
+
+/* TF options */
+.tf-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tf-opt {
+  padding: 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: var(--text2);
+}
+.tf-opt:hover { border-color: var(--accent); color: var(--text); }
+.tf-opt.selected-true { border-color: var(--success); background: rgba(74,222,128,0.1); color: var(--success); }
+.tf-opt.selected-false { border-color: var(--error); background: rgba(248,113,113,0.1); color: var(--error); }
+
+/* DRAG & DROP zones */
+.drag-builder {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.drag-pool, .drag-target {
+  min-height: 120px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: var(--surface);
+}
+.drag-pool-label, .drag-target-label {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.drag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+  margin: 4px;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.2s;
+}
+.drag-item:active { cursor: grabbing; opacity: 0.7; transform: scale(0.96); }
+.drag-item.dragging { opacity: 0.4; }
+
+/* BUTTONS */
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn:hover { background: var(--surface3); border-color: var(--accent); }
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: #6a58e8; border-color: #6a58e8; box-shadow: 0 0 20px rgba(124,106,247,0.4); }
+.btn-add {
+  border-style: dashed;
+  color: var(--text3);
+  font-size: 13px;
+  width: 100%;
+  justify-content: center;
+}
+.btn-add:hover { color: var(--accent); border-color: var(--accent); }
+.btn-danger { border-color: rgba(248,113,113,0.3); color: var(--error); }
+.btn-danger:hover { background: rgba(248,113,113,0.1); border-color: var(--error); }
+.btn-success { background: rgba(74,222,128,0.12); border-color: var(--success); color: var(--success); }
+.btn-success:hover { background: rgba(74,222,128,0.2); box-shadow: 0 0 16px rgba(74,222,128,0.3); }
+
+/* QUESTION CARD */
+.q-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  transition: border-color 0.2s;
+  animation: fadeUp 0.3s ease;
+}
+.q-card:hover { border-color: rgba(124,106,247,0.4); }
+.q-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.q-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.q-text { flex: 1; font-size: 15px; line-height: 1.5; }
+.q-type-badge {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.badge-mc { background: rgba(124,106,247,0.15); color: var(--accent); }
+.badge-tf { background: rgba(251,191,36,0.15); color: var(--warn); }
+.badge-dd { background: rgba(106,247,200,0.15); color: var(--accent3); }
+
+.q-answers { display: grid; gap: 8px; }
+.q-answer {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.q-answer.correct {
+  border-color: rgba(74,222,128,0.3);
+  background: rgba(74,222,128,0.08);
+  color: var(--success);
+}
+.q-answer .answer-marker {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.q-answer.correct .answer-marker { background: rgba(74,222,128,0.2); }
+
+/* TAKE QUIZ PANEL */
+.quiz-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+.quiz-progress {
+  flex: 1;
+  height: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.quiz-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.quiz-counter { font-size: 13px; color: var(--text2); margin-right: 16px; white-space: nowrap; }
+
+.quiz-q-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin-bottom: 20px;
+  animation: fadeUp 0.3s ease;
+}
+.quiz-q-label {
+  font-size: 12px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+.quiz-q-text {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 24px;
+}
+.quiz-options { display: grid; gap: 10px; }
+.quiz-option {
+  padding: 14px 18px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; gap: 12px;
+  transition: all 0.2s;
+  color: var(--text);
+  user-select: none;
+}
+.quiz-option:hover:not(.locked) { border-color: var(--accent); background: rgba(124,106,247,0.08); }
+.quiz-option.selected { border-color: var(--accent); background: rgba(124,106,247,0.15); }
+.quiz-option.correct { border-color: var(--success)!important; background: rgba(74,222,128,0.12)!important; color: var(--success)!important; }
+.quiz-option.wrong { border-color: var(--error)!important; background: rgba(248,113,113,0.1)!important; color: var(--error)!important; }
+.option-key {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.quiz-option.selected .option-key { background: var(--accent); border-color: var(--accent); color: #fff; }
+.quiz-option.correct .option-key { background: var(--success); border-color: var(--success); color: var(--bg); }
+.quiz-option.wrong .option-key { background: var(--error); border-color: var(--error); color: #fff; }
+
+/* DRAG DROP QUIZ */
+.dnd-question { margin-bottom: 20px; }
+.dnd-items-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px;
+  background: var(--surface2);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  min-height: 60px;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+.dnd-items-pool.drag-over { border-color: var(--accent); }
+.dnd-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.dnd-slot-label { font-size: 14px; color: var(--text2); min-width: 120px; }
+.dnd-slot-zone {
+  flex: 1;
+  min-height: 44px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+.dnd-slot-zone.drag-over { border-color: var(--accent3); background: rgba(106,247,200,0.05); }
+.dnd-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.15s;
+}
+.dnd-chip:hover { border-color: var(--accent); }
+.dnd-chip.dragging { opacity: 0.3; }
+
+/* RESULT */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+  text-align: center;
+  animation: fadeUp 0.4s ease;
+}
+.result-score {
+  font-family: 'Syne', sans-serif;
+  font-size: 72px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.result-label { font-size: 16px; color: var(--text2); margin-bottom: 32px; }
+.result-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.result-stat {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+.result-stat-val { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; }
+.result-stat-val.green { color: var(--success); }
+.result-stat-val.red { color: var(--error); }
+.result-stat-val.yellow { color: var(--warn); }
+.result-stat-lbl { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  font-size: 14px;
+  color: var(--text);
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 999;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { border-color: var(--success); color: var(--success); }
+.toast.error { border-color: var(--error); color: var(--error); }
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text3);
+  font-size: 15px;
+}
+.empty-state .empty-icon { font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.5; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+
+/* MOBILE + TOUCH FIXES */
+.dnd-chip.selected-chip {
+  border-color: var(--accent3) !important;
+  box-shadow: 0 0 0 3px rgba(106,247,200,0.15);
+  transform: translateY(-1px);
+}
+.dnd-slot-zone.tap-target-active,
+.dnd-items-pool.tap-target-active {
+  border-color: var(--accent3) !important;
+  box-shadow: 0 0 0 3px rgba(106,247,200,0.08);
+}
+.quiz-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+  #app {
+    padding: 18px 12px 40px;
+    max-width: 100%;
+  }
+  .header {
+    padding: 20px 0 24px;
+  }
+  .logo {
+    font-size: 34px;
+    line-height: 1.05;
+  }
+  .tagline {
+    font-size: 13px;
+    padding: 0 8px;
+  }
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 8px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 14px;
+  }
+  .q-type-selector,
+  #dd-type-selector {
+    grid-template-columns: 1fr;
+  }
+  .q-type-btn {
+    min-height: 52px;
+  }
+  .import-zone {
+    padding: 32px 18px;
+  }
+  .quiz-header {
+    gap: 10px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .quiz-counter {
+    margin-right: 0;
+  }
+  .quiz-q-card,
+  .q-card,
+  .result-card {
+    padding: 16px;
+  }
+  .quiz-q-text {
+    font-size: 18px;
+    line-height: 1.45;
+  }
+  .answer-item {
+    gap: 8px;
+    align-items: center;
+  }
+  .answer-item input[type=text] {
+    min-width: 0;
+  }
+  .drag-builder,
+  .tf-options,
+  .result-breakdown {
+    grid-template-columns: 1fr;
+  }
+  #panel-create > div[style*="display:flex;gap:12px;margin-top:24px;"] {
+    flex-direction: column;
+  }
+  #panel-list > div[style*="justify-content:space-between"] {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px;
+  }
+  .q-card-header {
+    flex-wrap: wrap;
+  }
+  .q-type-badge {
+    order: 3;
+  }
+  .dnd-slot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .dnd-slot-label {
+    min-width: 0;
+  }
+  .dnd-slot-zone {
+    width: 100%;
+  }
+  .dnd-items-pool {
+    padding: 12px;
+    min-height: 72px;
+  }
+  .dnd-chip {
+    max-width: 100%;
+    text-align: center;
+    justify-content: center;
+    word-break: break-word;
+    white-space: normal;
+    padding: 8px 12px;
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+  .result-score {
+    font-size: 48px;
+  }
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 16px;
+    width: auto;
+    white-space: normal;
+    transform: translateY(20px);
+  }
+  .toast.show {
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .pair-row {
+    grid-template-columns: 1fr !important;
+  }
+  .pair-row span {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .quiz-table-wrap table,
+  .quiz-table-wrap thead,
+  .quiz-table-wrap tbody,
+  .quiz-table-wrap tr,
+  .quiz-table-wrap th,
+  .quiz-table-wrap td {
+    display: block;
+    width: 100% !important;
+  }
+  .quiz-table-wrap thead {
+    display: none;
+  }
+  .quiz-table-wrap tr {
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--surface2);
+  }
+  .quiz-table-wrap td {
+    border: none !important;
+    padding: 10px 12px !important;
+  }
+  .quiz-table-wrap td + td {
+    border-top: 1px solid var(--border) !important;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<div id="app">
+  <div class="header">
+    <div class="logo">Quiz<span>Vibe</span></div>
+    <div class="tagline">Tạo quiz thông minh · Import Word · 3 dạng câu hỏi</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('create')">
+      <span>✦</span> Tạo câu hỏi
+    </button>
+    <button class="tab" onclick="switchTab('import')">
+      <span>⬆</span> Import Word
+    </button>
+    <button class="tab" onclick="switchTab('list')">
+      <span>☰</span> Danh sách
+      <span id="q-count-badge" style="background:rgba(124,106,247,0.3);color:var(--accent);padding:2px 7px;border-radius:10px;font-size:11px;">0</span>
+    </button>
+    <button class="tab" onclick="switchTab('quiz')">
+      <span>▶</span> Làm bài
+    </button>
+  </div>
+
+  <!-- ===== CREATE PANEL ===== -->
+  <div id="panel-create" class="panel active">
+    <div class="section-title">Chọn dạng câu hỏi</div>
+    <div class="q-type-selector">
+      <button class="q-type-btn active" id="btn-mc" onclick="selectQType('mc')">
+        <span class="q-icon">◉</span>
+        Nhiều lựa chọn
+      </button>
+      <button class="q-type-btn" id="btn-tf" onclick="selectQType('tf')">
+        <span class="q-icon">⊛</span>
+        Đúng / Sai
+      </button>
+      <button class="q-type-btn" id="btn-dd" onclick="selectQType('dd')">
+        <span class="q-icon">⊡</span>
+        Kéo thả vào ô
+      </button>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>Nội dung câu hỏi</label>
+        <textarea id="q-text" placeholder="Nhập câu hỏi của bạn tại đây..." rows="3"></textarea>
+      </div>
+    </div>
+
+    <!-- MULTIPLE CHOICE -->
+    <div id="mc-form" style="margin-top:20px;">
+      <div class="section-title" style="font-size:15px;margin-bottom:12px;">Đáp án (tích ✓ vào đáp án đúng)</div>
+      <div class="answer-list" id="answer-list"></div>
+      <button class="btn btn-add" style="margin-top:10px;" onclick="addAnswer()">+ Thêm đáp án</button>
+    </div>
+
+    <!-- TRUE FALSE -->
+    <div id="tf-form" style="display:none;margin-top:20px;">
+      <div class="section-title" style="font-size:15px;margin-bottom:12px;">Chọn đáp án đúng</div>
+      <div class="tf-options">
+        <div class="tf-opt" id="tf-true" onclick="selectTF(true)">✓ Đúng</div>
+        <div class="tf-opt" id="tf-false" onclick="selectTF(false)">✗ Sai</div>
+      </div>
+    </div>
+
+    <!-- DRAG DROP -->
+    <div id="dd-form" style="display:none;margin-top:20px;">
+      <div class="section-title" style="font-size:15px;margin-bottom:12px;">Dạng kéo thả</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;" id="dd-type-selector">
+        <button class="q-type-btn active" id="dd-match-btn" onclick="selectDDType('match')" style="padding:10px 8px;font-size:12px;">
+          <span class="q-icon" style="font-size:18px;">⇄</span>Ghép đôi 1-1
+        </button>
+        <button class="q-type-btn" id="dd-classify-btn" onclick="selectDDType('classify')" style="padding:10px 8px;font-size:12px;">
+          <span class="q-icon" style="font-size:18px;">⊞</span>Phân loại nhóm
+        </button>
+        <button class="q-type-btn" id="dd-fill-btn" onclick="selectDDType('fill')" style="padding:10px 8px;font-size:12px;">
+          <span class="q-icon" style="font-size:18px;">✎</span>Điền chỗ trống
+        </button>
+      </div>
+      <div id="dd-match-hint" style="font-size:12px;color:var(--text3);margin-bottom:10px;">Vế trái: Mô tả/Phát biểu · Vế phải: Đáp án ghép tương ứng</div>
+      <div id="dd-classify-hint" style="display:none;font-size:12px;color:var(--text3);margin-bottom:10px;">Vế trái: Mục cần phân loại · Vế phải: Tên nhóm (VD: "Hữu hình" / "Vô hình")</div>
+      <div id="dd-fill-hint" style="display:none;font-size:12px;color:var(--text3);margin-bottom:10px;">Vế trái: Câu văn có dấu "..." · Vế phải: Từ điền vào chỗ trống</div>
+      <div id="pairs-list"></div>
+      <button class="btn btn-add" style="margin-top:10px;" onclick="addPair()">+ Thêm cặp</button>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:24px;">
+      <button class="btn btn-primary" onclick="saveQuestion()">✦ Lưu câu hỏi</button>
+      <button class="btn" onclick="clearForm()">Xóa form</button>
+    </div>
+  </div>
+
+  <!-- ===== IMPORT PANEL ===== -->
+  <div id="panel-import" class="panel">
+    <div class="section-title">Import từ file Word</div>
+    <div class="import-zone" id="import-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <input type="file" id="file-input" accept=".docx,.txt" onchange="handleFileChange(event)">
+      <span class="import-icon">⬆</span>
+      <h3>Kéo file vào đây hoặc click để chọn</h3>
+      <p>Hỗ trợ: .docx (Word), .txt<br>File sẽ được phân tích tự động để trích xuất câu hỏi</p>
+    </div>
+
+    <div class="import-hint" id="import-hint" style="border-color:rgba(74,222,128,0.3)">
+      <span style="color:var(--success)">✓ Đã tải sẵn 117 câu hỏi từ <strong>Kinh_tế_Tổng_Ôn.docx</strong> (Bài 1, Bài 2, Bài 5)</span><br><br>
+      <strong>📋 Hướng dẫn định dạng file Word:</strong><br><br>
+      <strong>Dạng Nhiều lựa chọn:</strong><br>
+      <code style="color:var(--accent3);font-size:12px;">
+        1. [MC] Thủ đô của Việt Nam là gì?<br>
+        A. Đà Nẵng<br>
+        B. Hà Nội *<br>
+        C. TP.HCM<br>
+        D. Huế<br><br>
+        <strong>Dạng Đúng/Sai:</strong><br>
+        2. [TF] Trái đất quay quanh Mặt trăng. → Sai<br><br>
+        <strong>Dạng Kéo thả:</strong><br>
+        3. [DD] Ghép quốc gia với thủ đô:<br>
+        Việt Nam=Hà Nội<br>
+        Nhật Bản=Tokyo<br>
+        Pháp=Paris
+      </code>
+    </div>
+  </div>
+
+  <!-- ===== LIST PANEL ===== -->
+  <div id="panel-list" class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div class="section-title" style="margin-bottom:0;">Danh sách câu hỏi</div>
+      <button class="btn btn-danger" onclick="clearAll()" style="font-size:13px;">Xóa tất cả</button>
+    </div>
+    <div id="question-list"></div>
+  </div>
+
+  <!-- ===== QUIZ PANEL ===== -->
+  <div id="panel-quiz" class="panel">
+    <div id="quiz-start-screen">
+      <div class="result-card" style="padding:50px;">
+        <div style="font-size:40px;margin-bottom:16px;">▶</div>
+        <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;margin-bottom:8px;">Bắt đầu làm bài</div>
+        <div style="color:var(--text2);margin-bottom:32px;" id="quiz-start-info">Chưa có câu hỏi nào. Hãy tạo câu hỏi trước!</div>
+        <button class="btn btn-primary" onclick="startQuiz()" id="start-btn" disabled>Bắt đầu ngay →</button>
+      </div>
+    </div>
+    <div id="quiz-screen" style="display:none;"></div>
+    <div id="quiz-result" style="display:none;"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Pre-loaded questions from Kinh_te_Tong_On.docx
+const PRELOADED_QUESTIONS = [{"id":1001,"type":"mc","text":"Đối tượng nghiên cứu của Kinh tế chính trị Mác Lênin là:","answers":["Các quan hệ sản xuất và trao đổi được đặt trong sự liên hệ biện chứng với trình độ phát triển của lực lượng sản xuất và kiến trúc thượng tầng.","Sự sản xuất của xã hội.","Các phương thức sản xuất xã hội được đặt trong sự liên hệ biện chứng.","Nguồn gốc của cải và sự giàu có của tư bản chủ nghĩa."],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1002,"type":"mc","text":"Những chức năng cơ bản của Kinh tế chính trị Mác Lênin?","answers":["Chức năng nhận thức, thực tiễn, thông tin, tư tưởng.","Chức năng nhận thức, thực tiễn, tư tưởng, phương pháp luận.","Chức năng phê phán, thực tiễn, thông tin, tư tưởng.","Chức năng phê phán, thực tiễn, phương pháp luận, tư tưởng."],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1003,"type":"mc","text":"Điều kiện nào là 'điều kiện đủ' để sản xuất hàng hoá ra đời?","answers":["Có nhà nước quản lý sản xuất","Sự tách biệt về mặt kinh tế của các chủ thể sản xuất","Có thị trường phát triển mạnh mẽ","Có công cụ lao động tiên tiến"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1004,"type":"mc","text":"Chọn phương án trả lời đúng nhất về sản xuất hàng hoá.","answers":["Sản xuất ra sản phẩm nhằm mục đích trao đổi, mua bán","Sản xuất phục vụ cho tiêu dùng nội bộ","Quá trình lưu thông sản phẩm trong xã hội","Phân phối sản phẩm cho các đối tượng sử dụng"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1005,"type":"mc","text":"Điều kiện nào được gọi là 'điều kiện cần' để sản xuất hàng hoá ra đời?","answers":["Có công cụ lao động hiện đại","Có phân công lao động xã hội","Có nhà nước quản lý xã hội","Có thị trường phát triển sôi động"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1006,"type":"dd","text":"Kéo thả các đáp án khớp với các phát biểu tương ứng:","answers":[],"correctAnswers":[],"correct":null,"pairs":[{"left":"Sự tách biệt về mặt kinh tế giữa những người sản xuất hàng hóa là ... để nền sản xuất hàng hoá ra đời","right":"điều kiện đủ"},{"left":"Phân công lao động xã hội tạo nên ... của những người sản xuất khác nhau","right":"Chuyên môn hóa"},{"left":"Phân công lao động xã hội là ... để nền sản xuất hàng hoá ra đời","right":"điều kiện cần"},{"left":"Sản xuất hàng hoá là sản xuất ra ... để trao đổi, mua bán","right":"sản phẩm"}],"ddType":"match"},{"id":1007,"type":"mc","text":"Điều kiện ra đời của sản xuất hàng hoá là: (Chọn 2 đáp án đúng)","answers":["Sự tách biệt về mặt kinh tế của các chủ thể sản xuất","Phân công lao động xã hội","Phân công lao động cá biệt và chế độ tư hữu về tư liệu sản xuất","Phân công lao động chung và chế độ sở hữu khác nhau về tư liệu sản xuất"],"correctAnswers":[0,1],"correct":null,"pairs":[]},{"id":1008,"type":"mc","text":"Hàng hoá là gì?","answers":["Sản phẩm được sản xuất ra để đem bán","Sản phẩm ở trên thị trường","Sản phẩm của lao động để thoả mãn nhu cầu của con người","Sản phẩm của lao động có thể thoả mãn nhu cầu nào đó của con người thông qua trao đổi, mua bán"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1009,"type":"mc","text":"Giá trị của hàng hoá được quyết định bởi yếu tố nào?","answers":["Sự hao phí sức lao động của con người","Công dụng của hàng hoá","Lao động trừu tượng của người sản xuất kết tinh trong hàng hoá","Sự khan hiếm của hàng hoá"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1010,"type":"mc","text":"Hãy chọn phương án đúng nhất về lượng giá trị của một đơn vị hàng hoá.","answers":["Tỷ lệ nghịch với cường độ lao động","Tỷ lệ thuận với năng suất lao động","Phụ thuộc vào cường độ lao động","Tỷ lệ nghịch với năng suất lao động"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1011,"type":"mc","text":"Khi đồng thời tăng năng suất lao động và cường độ lao động lên 2 lần thì ý nào dưới đây là đúng?","answers":["Giá trị 1 hàng hoá giảm 2 lần, tổng số giá trị hàng hoá tăng 2 lần","Tổng số hàng hoá tăng lên 2 lần, giá trị 1 hàng hoá giảm 2 lần","Tổng số giá trị hàng hoá tăng 2 lần, tổng số hàng hoá tăng 2 lần","Tổng số hàng hoá tăng lên 4 lần, tổng số giá trị hàng hoá tăng lên 4 lần"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1012,"type":"dd","text":"Kéo thả các hàng hoá vào cột tương ứng (Hữu hình / Vô hình):","answers":[],"correctAnswers":[],"correct":null,"pairs":[{"left":"Xe máy","right":"Hàng hoá hữu hình"},{"left":"Quần, áo","right":"Hàng hoá hữu hình"},{"left":"Sách điện tử","right":"Hàng hoá vô hình"},{"left":"Khoá học trực tuyến","right":"Hàng hoá vô hình"},{"left":"Dịch vụ y tế","right":"Hàng hoá vô hình"},{"left":"Điện thoại","right":"Hàng hoá hữu hình"}],"ddType":"classify"},{"id":1013,"type":"tf","text":"[Câu 13.1] Trong 8 giờ SX 100 SP, tổng giá trị 600 USD. Nếu cường độ lao động tăng 3 lần thì giá trị 1 đơn vị SP là 3,0 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1014,"type":"tf","text":"[Câu 13.2] Trong 8 giờ SX 100 SP, tổng giá trị 600 USD. Nếu năng suất lao động tăng 3 lần thì giá trị 1 đơn vị SP là 2,0 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1015,"type":"tf","text":"[Câu 13.3] Trong 8 giờ SX 100 SP, tổng giá trị 600 USD. Nếu năng suất lao động tăng 2 lần thì giá trị 1 đơn vị SP là 6,0 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1016,"type":"tf","text":"[Câu 13.4] Trong 8 giờ SX 100 SP, tổng giá trị 600 USD. Nếu cường độ lao động tăng 2 lần thì giá trị 1 đơn vị SP là 6,0 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1017,"type":"tf","text":"[Câu 14.1] Trong 8 giờ SX 100 SP, tổng giá trị 300 USD. Nếu NSLĐ tăng 3 lần thì giá trị 1 đơn vị SP là 1,0 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1018,"type":"tf","text":"[Câu 14.2] Trong 8 giờ SX 100 SP, tổng giá trị 300 USD. Nếu NSLĐ tăng 2 lần thì giá trị 1 đơn vị SP là 1,5 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1019,"type":"tf","text":"[Câu 14.3] Trong 8 giờ SX 100 SP, tổng giá trị 300 USD. Nếu NSLĐ tăng 2 lần thì giá trị 1 đơn vị SP là 3 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1020,"type":"tf","text":"[Câu 14.4] Trong 8 giờ SX 100 SP, tổng giá trị 300 USD. Nếu NSLĐ tăng 3 lần thì giá trị 1 đơn vị SP là 6,0 USD — Đúng hay Sai?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1021,"type":"mc","text":"Sản xuất hàng hoá khác với sản xuất tự nhiên ở điểm nào?","answers":["Sản xuất hàng hoá không phụ thuộc thị trường","Sản xuất tự nhiên có năng suất cao hơn","Sản xuất hàng hoá hướng đến trao đổi, còn sản xuất tự nhiên là để tự tiêu dùng","Sản xuất tự nhiên gắn với công nghệ cao"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1022,"type":"mc","text":"Phương pháp nghiên cứu quan trọng của Kinh tế chính trị Mác – Lênin là:","answers":["Khảo sát đối tượng và thu thập số liệu.","Thực nghiệm khoa học","Mô hình hóa đối tượng.","Trừu tượng hóa khoa học."],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1023,"type":"mc","text":"Sản xuất hàng hoá làm phát sinh quan hệ nào sau đây? (Chọn 2 đáp án)","answers":["Quan hệ trao đổi, mua bán giữa các chủ thể sản xuất","Quan hệ giữa người sản xuất và sản phẩm","Quan hệ giữa người với người thông qua sản phẩm hàng hoá","Quan hệ giữa con người và tự nhiên"],"correctAnswers":[0,2],"correct":null,"pairs":[]},{"id":1024,"type":"mc","text":"Đặc điểm nào sau đây KHÔNG thuộc về sản xuất hàng hoá?","answers":["Có sự tách biệt tương đối giữa các chủ thể sản xuất","Sản phẩm để trao đổi, mua bán","Sản phẩm phục vụ hoàn toàn cho tiêu dùng cá nhân","Có sự phân công lao động xã hội"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1025,"type":"mc","text":"Sự giống nhau giữa quy luật kinh tế và chính sách kinh tế là:","answers":["Điều chỉnh hành vi kinh tế của con người.","Tồn tại khách quan, không phụ thuộc vào suy nghĩ của con người.","Tồn tại vĩnh viễn cùng với sự tồn tại, phát triển của xã hội loài người.","Luôn thúc đẩy sự giàu có và văn minh của xã hội."],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1026,"type":"mc","text":"Những phương pháp nghiên cứu và học tập chủ yếu trong Kinh tế chính trị Mác-Lênin gồm: (Chọn 2)","answers":["Thí nghiệm trong điều kiện phòng lab","Dự báo mô hình kinh tế bằng thuật toán AI","Phân tích - tổng hợp và trừu tượng hóa khoa học","Logic kết hợp với lịch sử"],"correctAnswers":[2,3],"correct":null,"pairs":[]},{"id":1027,"type":"mc","text":"Đặc điểm nào phản ánh bản chất của phân công lao động xã hội? (Chọn 2)","answers":["Tạo ra sự đồng nhất về sản phẩm và giá trị","Sự chuyên môn hóa của những người sản xuất","Sự phân chia lao động xã hội thành các ngành, nghề, các lĩnh vực kinh tế khác nhau","Giúp người sản xuất tự cung tự cấp"],"correctAnswers":[1,2],"correct":null,"pairs":[]},{"id":1028,"type":"tf","text":"[Câu 25.1] 8 giờ SX 200 SP, tổng giá trị 400 USD. Nếu NSLĐ tăng 3 lần thì tổng giá trị HH là 1.200 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1029,"type":"tf","text":"[Câu 25.2] 8 giờ SX 200 SP, tổng giá trị 400 USD. Nếu NSLĐ tăng 2 lần thì tổng giá trị HH là 400 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1030,"type":"tf","text":"[Câu 25.3] 8 giờ SX 200 SP, tổng giá trị 400 USD. Nếu CĐLĐ tăng 3 lần thì tổng giá trị HH là 400 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1031,"type":"tf","text":"[Câu 25.4] 8 giờ SX 200 SP, tổng giá trị 400 USD. Nếu CĐLĐ tăng 2 lần thì tổng giá trị HH là 800 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1032,"type":"tf","text":"[Câu 26.1] 8 giờ SX 200 SP, tổng giá trị 600 USD, giá trị 1 SP = 3 USD. Nếu CĐLĐ tăng 2 lần thì giá trị 1 SP là 3 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1033,"type":"tf","text":"[Câu 26.2] 8 giờ SX 200 SP, tổng giá trị 600 USD, giá trị 1 SP = 3 USD. Nếu CĐLĐ tăng 2 lần thì giá trị 1 SP là 6 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1034,"type":"tf","text":"[Câu 26.3] 8 giờ SX 200 SP, tổng giá trị 600 USD, giá trị 1 SP = 3 USD. Nếu CĐLĐ tăng 3 lần thì giá trị 1 SP là 3 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1035,"type":"mc","text":"Khi nào tiền tệ biến thành tư bản?","answers":["Có lượng tiền tệ đủ lớn","Dùng tiền để buôn bán mua rẻ, bán đắt","Sức lao động trở thành hàng hóa","Dùng tiền đầu tư vào sản xuất kinh doanh"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1036,"type":"mc","text":"Đâu là thuộc tính của hàng hóa sức lao động? (Chọn 2)","answers":["Giá trị thặng dư","Giá trị sử dụng của hàng hóa sức lao động","Thuộc tính sử dụng của hàng hóa sức lao động","Giá trị của hàng hóa sức lao động"],"correctAnswers":[1,3],"correct":null,"pairs":[]},{"id":1037,"type":"mc","text":"Ý nào đúng nhất về tư bản bất biến (c)?","answers":["Giá trị của nó không thay đổi về lượng và được chuyển nguyên vẹn sang sản phẩm","Giá trị của nó chuyển dần vào sản phẩm qua khấu hao","Giá trị của nó không thay đổi và được chuyển ngay sang sản phẩm sau một chu kỳ sản xuất","Giá trị của nó lớn lên trong quá trình sản xuất"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1038,"type":"mc","text":"Tỷ suất giá trị thặng dư (m') phản ánh điều gì?","answers":["Trình độ bóc lột của tư bản đối với công nhân làm thuê","Hiệu quả của nhà tư bản","Số lượng giá trị thặng dư","Quy mô bóc lột của nhà tư bản đối với người công nhân làm thuê"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1039,"type":"mc","text":"Căn cứ nào để chia tư bản thành tư bản bất biến và tư bản khả biến?","answers":["Hao mòn hữu hình hoặc vô hình","Phương thức chuyển giá trị các bộ phận tư bản sang sản phẩm","Vai trò các bộ phận tư bản trong quá trình sản xuất giá trị thặng dư","Tốc độ chu chuyển của tư bản"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1040,"type":"mc","text":"Căn cứ nào để chia tư bản ra thành tư bản cố định và tư bản lưu động?","answers":["Phương thức chuyển giá trị của các bộ phận tư bản sang sản phẩm","Sự thay đổi về lượng trong quá trình sản xuất","Tốc độ chu chuyển chung của tư bản","Vai trò các bộ phận tư bản trong quá trình sản xuất giá trị thặng dư"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1041,"type":"tf","text":"[Câu B2.7] Tư bản đầu tư 900 USD (tư liệu SX 600 USD). Với m'=200% thì giá trị HH là 1.500 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1042,"type":"tf","text":"[Câu B2.7b] Tư bản đầu tư 900 USD (tư liệu SX 600 USD). Với m'=100% thì giá trị HH là 1.500 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1043,"type":"tf","text":"[Câu B2.7c] Tư bản đầu tư 900 USD (tư liệu SX 600 USD). Với m'=200% thì giá trị HH là 1.800 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1044,"type":"tf","text":"[Câu B2.7d] Tư bản đầu tư 900 USD (tư liệu SX 600 USD). Với m'=300% thì giá trị HH là 2.000 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1045,"type":"mc","text":"Phương pháp sản xuất giá trị thặng dư tuyệt đối là: (Chọn 2)","answers":["Kéo dài ngày lao động vượt quá thời gian lao động tất yếu","Tiết kiệm chi phí sản xuất","Năng suất lao động, giá trị sức lao động không đổi và thời gian lao động tất yếu không đổi","Sử dụng kỹ thuật tiên tiến"],"correctAnswers":[0,2],"correct":null,"pairs":[]},{"id":1046,"type":"mc","text":"Giá trị thặng dư siêu ngạch còn được gọi là:","answers":["Hình thức biến tướng của giá trị thặng dư tương đối","Hình thức biến tướng của giá trị thặng dư tuyệt đối","Hình thức biểu hiện của giá trị thặng dư tương đối","Hình thức biến tướng của sản phẩm thặng dư tương đối"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1047,"type":"tf","text":"[Câu B2.10] c=1.500 USD, m'=100%, c/v=2/1 thì giá trị HH là 3.000 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1048,"type":"tf","text":"[Câu B2.10b] c=1.500 USD, m'=100%, c/v=3/1 thì giá trị HH là 2.600 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1049,"type":"tf","text":"[Câu B2.10c] c=1.500 USD, m'=100%, c/v=5/1 thì giá trị HH là 2.250 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1050,"type":"tf","text":"[Câu B2.10d] c=1.500 USD, m'=100%, c/v=3/1 thì giá trị HH là 2.500 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1051,"type":"mc","text":"Phương pháp sản xuất giá trị thặng dư tuyệt đối có hạn chế gì?","answers":["Không áp dụng cho doanh nghiệp nhỏ","Không tạo ra lợi nhuận","Không bị ảnh hưởng bởi pháp luật","Bị giới hạn bởi thời gian sinh học của con người"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1052,"type":"mc","text":"Điều kiện để nhà tư bản thu được giá trị thặng dư siêu ngạch là: (Chọn 2)","answers":["Sản phẩm sản xuất ra có giá trị thấp hơn giá trị xã hội nhưng vẫn bán theo giá thị trường","Tổ chức sản xuất theo lối thủ công truyền thống","Tăng ngày lao động của công nhân","Năng suất lao động cá biệt cao hơn mức trung bình của xã hội"],"correctAnswers":[0,3],"correct":null,"pairs":[]},{"id":1053,"type":"mc","text":"Để đạt được giá trị thặng dư siêu ngạch, doanh nghiệp cần: (Chọn 2)","answers":["Trả lương công nhân cao hơn mức quy định","Áp dụng công nghệ mới sớm hơn đối thủ cạnh tranh","Bán hàng hóa với giá trị cao hơn cả giá trị xã hội","Sản xuất ra hàng hóa có giá trị thấp hơn mức trung bình xã hội"],"correctAnswers":[1,3],"correct":null,"pairs":[]},{"id":1054,"type":"mc","text":"Điều kiện để sức lao động trở thành hàng hóa là: (Chọn 2)","answers":["Người lao động không có tư liệu sản xuất","Người lao động có học vấn cao","Nhà tư bản có quyền ra lệnh","Người lao động được tự do về thân thể"],"correctAnswers":[0,3],"correct":null,"pairs":[]},{"id":1055,"type":"mc","text":"Giá trị thặng dư là gì?","answers":["Phần giá trị mới do lao động sống tạo ra ngoài giá trị sức lao động, bị nhà tư bản chiếm đoạt","Phần tiền lương tăng thêm cho công nhân","Lợi nhuận của doanh nghiệp trên thị trường","Phần giá trị do máy móc tạo ra"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1056,"type":"mc","text":"Hao mòn tư bản cố định có các loại nào? (Chọn 2)","answers":["Hao mòn nhân tạo","Hao mòn hữu hình","Hao mòn vô hình","Hao mòn kỹ thuật"],"correctAnswers":[1,2],"correct":null,"pairs":[]},{"id":1057,"type":"tf","text":"[B2.18] Chi phí tư bản khả biến 2000 USD, m'=100%. Giá trị thặng dư là 2.000 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1058,"type":"tf","text":"[B2.18b] Chi phí tư bản khả biến 2000 USD, m'=200%. Giá trị thặng dư là 4.000 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1059,"type":"tf","text":"[B2.18c] Chi phí tư bản khả biến 2000 USD, m'=50%. Giá trị thặng dư là 2.000 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1060,"type":"tf","text":"[B2.18d] Chi phí tư bản khả biến 2000 USD, m'=150%. Giá trị thặng dư là 3.000 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1061,"type":"mc","text":"Nguồn gốc chủ yếu của tích lũy tư bản là:","answers":["Vay mượn từ ngân hàng","Giá trị thặng dư","Tiết kiệm chi tiêu của nhà tư bản","Lợi nhuận thương mại"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1062,"type":"mc","text":"Thời gian lao động trong một ngày của công nhân được chia thành: (Chọn 2)","answers":["Thời gian lao động sáng tạo và thời gian lao động giản đơn","Thời gian lao động tất yếu","Thời gian lao động thặng dư","Thời gian lao động hữu ích và vô ích"],"correctAnswers":[1,2],"correct":null,"pairs":[]},{"id":1063,"type":"mc","text":"Trong 8 giờ làm việc, công nhân tạo ra giá trị cao hơn tiền lương nhận được. Hiện tượng đó phản ánh đặc điểm nào của hàng hoá sức lao động?","answers":["Giá trị sử dụng của hàng hoá sức lao động có tính đặc biệt tạo ra giá trị thặng dư","Giá trị hàng hoá sức lao động cao hơn giá trị các hàng hoá khác","Tiền lương bằng giá trị sức lao động","Nhà tư bản trả tiền công bằng giá trị tạo ra"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1064,"type":"mc","text":"Biết tổng giá trị HH 2.000 USD, tư bản bất biến 1.200 USD, tư bản khả biến 400 USD. Giá trị thặng dư là bao nhiêu?","answers":["200 USD","400 USD","600 USD","800 USD"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1065,"type":"mc","text":"Lý do khiến phương pháp sản xuất giá trị thặng dư siêu ngạch mang tính tạm thời là:","answers":["Nhà nước cấm áp dụng","Các đối thủ cạnh tranh sớm bắt kịp công nghệ mới","Công nhân phản đối","Chi phí đầu tư quá lớn"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1066,"type":"mc","text":"Điều kiện để sức lao động trở thành hàng hoá là: (Chọn 2)","answers":["Người lao động được tự do về thân thể","Người lao động phải có bằng đại học","Người lao động không có tư liệu sản xuất","Nhà tư bản phải có đủ vốn"],"correctAnswers":[0,2],"correct":null,"pairs":[]},{"id":1067,"type":"tf","text":"[B2.27] c=1.500 USD, m'=100%, c/v=2/1. Giá trị HH là 3.750 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1068,"type":"tf","text":"[B2.27b] c=1.500 USD, m'=100%, c/v=3/1. Giá trị HH là 2.500 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1069,"type":"tf","text":"[B2.27c] c=1.500 USD, m'=100%, c/v=5/1. Giá trị HH là 2.100 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1070,"type":"tf","text":"[B2.27d] c=1.500 USD, m'=100%, c/v=4/1. Giá trị HH là 2.250 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1071,"type":"tf","text":"[B2.28] c=1.200 USD, m'=200%, c/v=2/1. Giá trị HH là 2.400 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1072,"type":"tf","text":"[B2.28b] c=1.200 USD, m'=200%, c/v=3/1. Giá trị HH là 2.000 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1073,"type":"tf","text":"[B2.28c] c=1.200 USD, m'=200%, c/v=4/1. Giá trị HH là 1.860 USD?","answers":[],"correctAnswers":[],"correct":false,"pairs":[]},{"id":1074,"type":"tf","text":"[B2.28d] c=1.200 USD, m'=200%, c/v=2/1. Giá trị HH là 3.000 USD?","answers":[],"correctAnswers":[],"correct":true,"pairs":[]},{"id":1075,"type":"mc","text":"Trong nền kinh tế hiện đại, phương pháp sản xuất giá trị thặng dư nào được sử dụng phổ biến nhất?","answers":["Giá trị thặng dư tuyệt đối","Giá trị thặng dư tương đối","Giá trị thặng dư siêu ngạch","Kết hợp cả tuyệt đối và tương đối"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1076,"type":"mc","text":"Giá trị của hàng hoá sức lao động phụ thuộc vào: (Chọn 2)","answers":["Mức tiêu dùng tối thiểu của người lao động","Chi phí đào tạo, học nghề","Quy mô sản xuất của nhà tư bản","Số giờ làm việc mỗi ngày"],"correctAnswers":[0,1],"correct":null,"pairs":[]},{"id":1077,"type":"mc","text":"Kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam vận hành theo:","answers":["Các quy luật kinh tế thị trường đồng thời đảm bảo định hướng xã hội chủ nghĩa","Kế hoạch tập trung quan liêu bao cấp","Thị trường chủ nghĩa tự do hoàn toàn","Cơ chế kinh tế tự cầu"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1078,"type":"mc","text":"Nội dung nào sau đây là đặc trưng của kinh tế thị trường định hướng XHCN?","answers":["Kinh tế nhà nước quyết định toàn bộ hoạt động kinh tế","Gắn tăng trưởng kinh tế với công bằng xã hội ngay trong từng chính sách, chiến lược","Chỉ thừa nhận kinh tế tư nhân","Bỏ qua vai trò của thị trường"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1079,"type":"mc","text":"Tính tất yếu của việc phát triển kinh tế thị trường XHCN ở Việt Nam được thể hiện ở:","answers":["Mục tiêu là lợi nhuận của doanh nghiệp","Nhu cầu hợp tác khu vực","Yêu cầu của xu thế tự do hóa toàn cầu","Quy luật vận động của nền kinh tế hàng hóa đạt tới giai đoạn kinh tế thị trường"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1080,"type":"mc","text":"Đặc trưng nào thể hiện sự khác biệt giữa KTTT định hướng XHCN và KTTT tư bản?","answers":["Thừa nhận vai trò của kinh tế tư nhân","Tôn trọng quy luật cung cầu","Vận hành hoàn toàn theo quy luật thị trường","Mục tiêu hướng đến xã hội 'dân giàu, nước mạnh, dân chủ, công bằng, văn minh'"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1081,"type":"mc","text":"Chọn 2 yếu tố đặc trưng của kinh tế thị trường định hướng XHCN:","answers":["Bỏ qua vai trò lãnh đạo của Đảng","Cá nhân tự do tuyệt đối và kinh tế nhà nước làm trung tâm","Nhiều thành phần kinh tế","Vận hành theo quy luật thị trường"],"correctAnswers":[2,3],"correct":null,"pairs":[]},{"id":1082,"type":"mc","text":"Vai trò của Nhà nước trong nền KTTT định hướng XHCN bao gồm:","answers":["Từ bỏ vai trò quản lý vì thị trường tự điều tiết","Xây dựng thể chế và hành lang pháp lý cho thị trường hoạt động ổn định","Kiểm soát, điều tiết các mặt hàng chiến lược, thiết yếu","Trở thành đối trọng với khu vực tư nhân"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1083,"type":"mc","text":"Thể chế kinh tế là gì?","answers":["Hệ thống các quy tắc, luật pháp và cơ chế vận hành điều chỉnh hành vi các chủ thể kinh tế","Bộ luật dân sự và hình sự trong kinh tế","Hệ thống công cụ điều tiết thu nhập xã hội","Kế hoạch điều tiết vĩ mô của Nhà nước"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1084,"type":"mc","text":"Một trong những yếu tố cấu thành thể chế kinh tế thị trường là:","answers":["Các quy tắc, luật pháp chính thức và không chính thức","Các sáng kiến tự phát từ doanh nghiệp","Các hiệp định thương mại song phương","Các thiết chế xã hội truyền thống"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1085,"type":"mc","text":"Chủ thể tham gia thể chế kinh tế thị trường gồm:","answers":["Chỉ có các doanh nghiệp nhà nước","Doanh nghiệp, tổ chức xã hội và cơ quan quản lý kinh tế","Chỉ gồm cơ quan điều tiết thị trường","Cá nhân có vốn lớn"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1086,"type":"mc","text":"Một trong những nội dung hoàn thiện thể chế kinh tế thị trường là:","answers":["Trở lại mô hình kế hoạch hóa tập trung","Đảm bảo môi trường cạnh tranh lành mạnh và thúc đẩy đổi mới sáng tạo","Xóa bỏ vai trò của kinh tế tư nhân","Tăng cường quản lý tập trung bao cấp"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1087,"type":"mc","text":"Mối quan hệ giữa nhà nước và thị trường trong nền KTTT XHCN được hiểu là:","answers":["Nhà nước can thiệp vào mọi hoạt động kinh tế, làm thay thị trường","Thị trường tự hoạt động độc lập, không cần sự điều tiết của nhà nước","Thị trường đóng vai trò quyết định phân bổ nguồn lực, nhà nước điều tiết vĩ mô","Nhà nước và thị trường hoạt động độc lập, không ảnh hưởng lẫn nhau"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1088,"type":"mc","text":"Lợi ích kinh tế là gì?","answers":["Lợi ích vật chất thu được từ các hoạt động kinh tế","Các giá trị tinh thần do xã hội mang lại","Chỉ bao gồm lợi nhuận của các doanh nghiệp","Sự phát triển văn hóa và giáo dục trong xã hội"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1089,"type":"mc","text":"Quan hệ lợi ích kinh tế là:","answers":["Chỉ là quan hệ giữa người lao động và người sử dụng lao động","Quan hệ giữa các tổ chức chính trị trong xã hội","Mối liên kết giữa nhà nước và các tổ chức quốc tế","Sự thiết lập tương tác giữa các chủ thể nhằm mục tiêu phân phối lợi ích"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1090,"type":"mc","text":"Phương thức nào dưới đây thường được sử dụng để giải quyết mâu thuẫn lợi ích kinh tế?","answers":["Can thiệp quân sự","Thương lượng, hòa giải và thông qua các cơ quan pháp lý","Trừng phạt kinh tế từ quốc tế","Bỏ qua mâu thuẫn để tự giải quyết"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1091,"type":"mc","text":"Vai trò của Nhà nước trong việc bảo đảm hài hòa lợi ích kinh tế là gì?","answers":["Trực tiếp chia đều thu nhập cho mọi người dân","Can thiệp trực tiếp vào từng giao dịch dân sự","Tạo lập môi trường pháp lý và điều tiết thu nhập thông qua thuế, phúc lợi","Giới hạn sự phát triển của doanh nghiệp lớn"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1092,"type":"mc","text":"Cuộc cách mạng công nghiệp lần thứ nhất khởi phát từ quốc gia nào?","answers":["Pháp","Đức","Mỹ","Anh"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1093,"type":"mc","text":"Nguồn năng lượng nào được sử dụng phổ biến trong cuộc CMCN lần thứ nhất?","answers":["Than đá","Dầu mỏ","Năng lượng mặt trời","Điện"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1094,"type":"mc","text":"Thành tựu nổi bật nhất của cuộc CMCN lần thứ nhất là gì?","answers":["Động cơ đốt trong","Máy bay","Động cơ hơi nước","Máy tính"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1095,"type":"mc","text":"Nguồn năng lượng cơ bản được sử dụng trong cuộc CMCN lần thứ hai là gì?","answers":["Điện năng","Năng lượng hạt nhân","Than đá","Năng lượng mặt trời"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1096,"type":"mc","text":"Đặc trưng nổi bật của cuộc CMCN lần thứ hai là gì?","answers":["Chuyển từ sản xuất cơ khí sang sản xuất hàng loạt bằng điện","Ứng dụng công nghệ thông tin vào sản xuất","Sử dụng năng lượng hơi nước","Tự động hóa hoàn toàn"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1097,"type":"mc","text":"Yếu tố cốt lõi của cuộc CMCN lần thứ tư (4.0) là gì?","answers":["Công nghệ thông tin và máy tính cá nhân","Sản xuất hàng loạt dựa trên điện năng","Động cơ hơi nước","Sự kết hợp giữa thế giới vật lý, kỹ thuật số và sinh học"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1098,"type":"mc","text":"Công nghiệp hóa là gì?","answers":["Quá trình chuyển đổi nền kinh tế nông nghiệp sang công nghiệp","Sự gia tăng dân số ở các thành phố lớn","Quá trình phát triển các ngành dịch vụ","Quá trình bảo tồn các giá trị văn hóa truyền thống"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1099,"type":"mc","text":"Mô hình công nghiệp hóa cổ điển bắt đầu từ ngành nào?","answers":["Công nghiệp công nghệ cao","Công nghiệp nặng","Công nghiệp nhẹ","Nông nghiệp"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1100,"type":"mc","text":"Mục tiêu chính của mô hình công nghiệp hóa kiểu Liên Xô là gì?","answers":["Phát triển du lịch và dịch vụ","Ưu tiên phát triển công nghiệp nặng","Tập trung vào nông nghiệp","Phát triển công nghiệp nhẹ"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1101,"type":"mc","text":"Tính tất yếu khách quan của công nghiệp hóa, hiện đại hóa ở Việt Nam là do:","answers":["Do yêu cầu xây dựng cơ sở vật chất - kỹ thuật cho chủ nghĩa xã hội","Do yêu cầu hội nhập kinh tế quốc tế","Cả A và B đều đúng","Do sự phát triển của công nghệ thông tin"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1102,"type":"mc","text":"Chủ thể nào đóng vai trò nòng cốt trong việc thực hiện công nghiệp hóa, hiện đại hóa ở Việt Nam?","answers":["Nông dân","Công nhân","Doanh nghiệp và đội ngũ trí thức","Học sinh, sinh viên"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1103,"type":"mc","text":"Hội nhập kinh tế quốc tế là quá trình:","answers":["Tự do hóa thương mại hoàn toàn không có sự quản lý của nhà nước","Một quốc gia gắn kết nền kinh tế của mình với nền kinh tế khu vực và toàn cầu","Đóng cửa nền kinh tế để tự cung tự cấp","Chỉ tham gia vào các hiệp định song phương"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1104,"type":"mc","text":"Động lực nào sau đây thúc đẩy sự hội nhập kinh tế quốc tế?","answers":["Xu thế toàn cầu hóa và sự phát triển của lực lượng sản xuất","Nhu cầu đóng cửa để bảo vệ nền sản xuất trong nước","Mong muốn duy trì kinh tế tự nhiên","Sự suy thoái của các tổ chức quốc tế"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1105,"type":"mc","text":"Một trong những tác động tích cực của hội nhập kinh tế quốc tế là:","answers":["Tăng sự phụ thuộc hoàn toàn vào nước ngoài","Thúc đẩy tăng trưởng kinh tế và nâng cao năng lực cạnh tranh","Mất hoàn toàn bản sắc văn hóa dân tộc","Xóa bỏ hoàn toàn rào cản pháp lý quốc gia"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1106,"type":"mc","text":"Thách thức lớn nhất đối với Việt Nam khi hội nhập kinh tế quốc tế là:","answers":["Không có hàng hóa xuất khẩu","Cạnh tranh gay gắt và nguy cơ tụt hậu về kinh tế","Thiếu hụt lực lượng lao động phổ thông","Nguồn tài nguyên thiên nhiên bị cạn kiệt"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1107,"type":"mc","text":"Khái niệm 'Kinh tế thị trường định hướng XHCN' ở Việt Nam được hiểu là:","answers":["Một nền kinh tế phi thị trường nhưng có định hướng cộng sản","Một nền kinh tế vận hành đầy đủ theo cơ chế thị trường hoạt động dưới sự lãnh đạo của Đảng, vì mục tiêu dân giàu, nước mạnh, dân chủ, công bằng, văn minh","Một nền kinh tế thị trường tư bản chủ nghĩa có can thiệp của Nhà nước","Một hình thức kế hoạch hóa tập trung kiểu mới"],"correctAnswers":[1],"correct":null,"pairs":[]},{"id":1108,"type":"mc","text":"Những yếu tố nào là điều kiện để KTTT XHCN ở VN phát triển đúng hướng? (Chọn 2)","answers":["Kết hợp hài hòa giữa tăng trưởng kinh tế và công bằng xã hội","Vai trò lãnh đạo của Đảng Cộng sản Việt Nam","Bỏ qua vai trò của doanh nghiệp nhà nước","Thị trường hoàn toàn tự do, không kiểm soát"],"correctAnswers":[0,1],"correct":null,"pairs":[]},{"id":1109,"type":"mc","text":"Vì sao cần hoàn thiện thể chế về các yếu tố thị trường?","answers":["Để đảm bảo vận hành thông suốt các loại thị trường, phát huy tác động cộng hưởng","Để thực hiện bao cấp","Để loại bỏ kinh tế tư nhân","Để hạn chế vai trò của thị trường"],"correctAnswers":[0],"correct":null,"pairs":[]},{"id":1110,"type":"mc","text":"Những nội dung nào thuộc hoàn thiện thể chế về sở hữu? (Chọn 2)","answers":["Thể chế hóa đầy đủ quyền tài sản","Hoàn thiện pháp luật về đất đai, tài nguyên","Xóa bỏ sở hữu tư nhân","Tăng bảo hộ doanh nghiệp nhà nước"],"correctAnswers":[0,1],"correct":null,"pairs":[]},{"id":1111,"type":"mc","text":"Lợi ích kinh tế là:","answers":["Sự chia đều thu nhập giữa các cá nhân","Sự ưu đãi tài chính của Nhà nước","Sự phát triển các giá trị tinh thần","Sự thỏa mãn nhu cầu vật chất thu được qua hoạt động kinh tế"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1112,"type":"mc","text":"Vì sao cần điều tiết quan hệ lợi ích kinh tế?","answers":["Vì thị trường không có vai trò điều phối","Vì nhà nước cần can thiệp vào mọi giao dịch","Vì tồn tại sự mâu thuẫn và xung đột trong lợi ích","Vì mọi chủ thể đều bình đẳng như nhau"],"correctAnswers":[2],"correct":null,"pairs":[]},{"id":1113,"type":"dd","text":"Kéo thả để phân loại các đặc điểm vào hai nhóm: 'Cơ chế thị trường' và 'Định hướng XHCN'","answers":[],"correctAnswers":[],"correct":null,"pairs":[{"left":"Hỗ trợ người yếu thế","right":"Định hướng xã hội chủ nghĩa"},{"left":"Cạnh tranh tự do về giá","right":"Cơ chế thị trường"},{"left":"Đảm bảo an sinh xã hội","right":"Định hướng xã hội chủ nghĩa"},{"left":"Quy luật cung cầu chi phối","right":"Cơ chế thị trường"}],"ddType":"classify"},{"id":1114,"type":"mc","text":"Hoàn thiện thể chế KTTT XHCN ở Việt Nam cần đảm bảo sự phát triển của khu vực kinh tế tư nhân như một ___ trong nền kinh tế quốc dân.","answers":["khu vực bổ sung","yếu tố tạm thời","thành phần chủ lực","động lực quan trọng"],"correctAnswers":[3],"correct":null,"pairs":[]},{"id":1115,"type":"dd","text":"Kéo thả để hoàn chỉnh các câu về hoàn thiện thể chế:","answers":[],"correctAnswers":[],"correct":null,"pairs":[{"left":"Hoàn thiện thể chế về sở hữu hướng đến bảo vệ nền kinh tế đa hình thức ...","right":"sở hữu"},{"left":"Cần hoàn thiện ... để đảm bảo môi trường cạnh tranh công bằng","right":"pháp luật"},{"left":"Cần phát huy tối đa ... xã hội vào phát triển thể chế","right":"nguồn lực"},{"left":"Thể chế đồng bộ phải nâng cao vai trò lãnh đạo của ...","right":"Đảng"}],"ddType":"fill"},{"id":1116,"type":"dd","text":"Kéo thả từ đúng vào chỗ trống về quan hệ lợi ích kinh tế:","answers":[],"correctAnswers":[],"correct":null,"pairs":[{"left":"Quan hệ lợi ích kinh tế tạo động lực thông qua ...","right":"thu nhập"},{"left":"Khi lợi ích mâu thuẫn không điều hòa, có thể dẫn đến ...","right":"xung đột"},{"left":"... tích cực là hợp pháp, phù hợp lợi ích chung","right":"Lợi ích nhóm"},{"left":"Quan hệ giữa lợi ích cá nhân và xã hội cần hướng đến sự ...","right":"thống nhất"}],"ddType":"fill"},{"id":1117,"type":"dd","text":"Kéo thả từ/cụm từ vào vị trí phù hợp về lợi ích kinh tế:","answers":[],"correctAnswers":[],"correct":null,"pairs":[{"left":"Lợi ích kinh tế là ... của các hoạt động kinh tế","right":"động lực trực tiếp"},{"left":"Quan hệ lợi ích kinh tế luôn gắn với trình độ phát triển của ...","right":"sản xuất xã hội"},{"left":"Mâu thuẫn lợi ích đòi hỏi vai trò ... của Nhà nước","right":"điều tiết"},{"left":"Lợi ích kinh tế mang tính ..., phản ánh bản chất xã hội từng thời kỳ","right":"lịch sử"}],"ddType":"fill"}];
+let questions = (() => {
+  const saved = localStorage.getItem('quizvibeQ');
+  if(saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      // Merge: keep saved if it has content, otherwise use preloaded
+      return parsed.length > 0 ? parsed : [...PRELOADED_QUESTIONS];
+    } catch(e) {}
+  }
+  // First load: save preloaded to localStorage and return
+  const initial = [...PRELOADED_QUESTIONS];
+  localStorage.setItem('quizvibeQ', JSON.stringify(initial));
+  return initial;
+})();
+let currentQType = 'mc';
+let tfAnswer = null;
+let quizState = { idx: 0, score: 0, answers: [], started: false };
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['create','import','list','quiz'][i] === tab);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'list') renderList();
+  if (tab === 'quiz') renderQuizStart();
+}
+
+let currentDDType = 'match';
+function selectDDType(type) {
+  currentDDType = type;
+  ['match','classify','fill'].forEach(t => {
+    const btn = document.getElementById('dd-' + t + '-btn');
+    const hint = document.getElementById('dd-' + t + '-hint');
+    if (btn) btn.classList.toggle('active', t === type);
+    if (hint) hint.style.display = t === type ? 'block' : 'none';
+  });
+}
+
+function selectQType(type) {
+  currentQType = type;
+  ['mc','tf','dd'].forEach(t => {
+    document.getElementById('btn-' + t).classList.toggle('active', t === type);
+    document.getElementById(t + '-form').style.display = t === type ? 'block' : 'none';
+  });
+  if (type === 'mc' && document.getElementById('answer-list').children.length === 0) {
+    initAnswers();
+  }
+  if (type === 'dd' && document.getElementById('pairs-list').children.length === 0) {
+    addPair(); addPair();
+  }
+}
+
+function initAnswers() {
+  const list = document.getElementById('answer-list');
+  list.innerHTML = '';
+  ['A','B','C','D'].forEach(l => addAnswer(l));
+}
+
+function addAnswer(label) {
+  const list = document.getElementById('answer-list');
+  const id = 'ans-' + Date.now() + Math.random();
+  const div = document.createElement('div');
+  div.className = 'answer-item';
+  div.dataset.id = id;
+  div.innerHTML = `
+    <button class="check-btn" onclick="toggleCorrect(this)" title="Đánh dấu đúng"></button>
+    <span style="color:var(--text3);font-size:13px;min-width:16px;">${label||''}</span>
+    <input type="text" placeholder="Nội dung đáp án...">
+    <button class="del-btn" onclick="this.closest('.answer-item').remove()">✕</button>
+  `;
+  list.appendChild(div);
+}
+
+function toggleCorrect(btn) {
+  btn.classList.toggle('correct');
+  btn.textContent = btn.classList.contains('correct') ? '✓' : '';
+}
+
+function selectTF(val) {
+  tfAnswer = val;
+  document.getElementById('tf-true').className = 'tf-opt' + (val === true ? ' selected-true' : '');
+  document.getElementById('tf-false').className = 'tf-opt' + (val === false ? ' selected-false' : '');
+}
+
+function addPair() {
+  const list = document.getElementById('pairs-list');
+  const div = document.createElement('div');
+  div.className = 'pair-row';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 20px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
+  div.innerHTML = `
+    <input type="text" placeholder="Vế trái (ví dụ: Việt Nam)" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;">
+    <span style="color:var(--text3);text-align:center;font-size:18px;">→</span>
+    <input type="text" placeholder="Vế phải (ví dụ: Hà Nội)" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;">
+    <button class="del-btn" onclick="this.closest('div').remove()">✕</button>
+  `;
+  list.appendChild(div);
+}
+
+function saveQuestion() {
+  const text = document.getElementById('q-text').value.trim();
+  if (!text) { showToast('Vui lòng nhập nội dung câu hỏi', 'error'); return; }
+
+  let q = { id: Date.now(), type: currentQType, text, answers: [], correctAnswers: [], pairs: [], correct: null };
+
+  if (currentQType === 'mc') {
+    const items = document.querySelectorAll('#answer-list .answer-item');
+    items.forEach((item, i) => {
+      const val = item.querySelector('input[type=text]').value.trim();
+      if (val) {
+        q.answers.push(val);
+        if (item.querySelector('.check-btn').classList.contains('correct')) {
+          q.correctAnswers.push(i);
+        }
+      }
+    });
+    if (q.answers.length < 2) { showToast('Cần ít nhất 2 đáp án', 'error'); return; }
+    if (q.correctAnswers.length === 0) { showToast('Vui lòng chọn đáp án đúng', 'error'); return; }
+  }
+  else if (currentQType === 'tf') {
+    if (tfAnswer === null) { showToast('Vui lòng chọn Đúng hoặc Sai', 'error'); return; }
+    q.correct = tfAnswer;
+  }
+  else if (currentQType === 'dd') {
+    q.ddType = currentDDType;
+    const rows = document.querySelectorAll('#pairs-list div');
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      if (inputs[0].value.trim() && inputs[1].value.trim()) {
+        q.pairs.push({ left: inputs[0].value.trim(), right: inputs[1].value.trim() });
+      }
+    });
+    if (q.pairs.length < 2) { showToast('Cần ít nhất 2 cặp ghép đôi', 'error'); return; }
+  }
+
+  questions.push(q);
+  saveData();
+  clearForm();
+  showToast('✦ Đã lưu câu hỏi!', 'success');
+}
+
+function clearForm() {
+  document.getElementById('q-text').value = '';
+  tfAnswer = null;
+  document.getElementById('tf-true').className = 'tf-opt';
+  document.getElementById('tf-false').className = 'tf-opt';
+  document.getElementById('answer-list').innerHTML = '';
+  document.getElementById('pairs-list').innerHTML = '';
+  if (currentQType === 'mc') initAnswers();
+  if (currentQType === 'dd') { addPair(); addPair(); }
+}
+
+function saveData() {
+  localStorage.setItem('quizvibeQ', JSON.stringify(questions));
+  document.getElementById('q-count-badge').textContent = questions.length;
+}
+
+function renderList() {
+  const el = document.getElementById('question-list');
+  if (!questions.length) {
+    el.innerHTML = `<div class="empty-state"><span class="empty-icon">◌</span>Chưa có câu hỏi nào. Hãy tạo câu hỏi!</div>`;
+    return;
+  }
+  el.innerHTML = questions.map((q, i) => {
+    let answersHtml = '';
+    if (q.type === 'mc') {
+      answersHtml = q.answers.map((a, ai) => `
+        <div class="q-answer ${q.correctAnswers.includes(ai) ? 'correct' : ''}">
+          <div class="answer-marker">${q.correctAnswers.includes(ai) ? '✓' : String.fromCharCode(65+ai)}</div>
+          ${a}
+        </div>`).join('');
+    } else if (q.type === 'tf') {
+      answersHtml = `<div class="q-answer correct"><div class="answer-marker">✓</div>${q.correct ? 'Đúng' : 'Sai'}</div>`;
+    } else {
+      answersHtml = q.pairs.map(p => `<div class="q-answer"><span style="color:var(--accent)">${p.left}</span><span style="color:var(--text3);margin:0 8px">→</span>${p.right}</div>`).join('');
+    }
+    const badges = { mc: 'badge-mc', tf: 'badge-tf', dd: 'badge-dd' };
+    const ddLabel = q.ddType === 'classify' ? 'Phân loại' : q.ddType === 'fill' ? 'Điền trống' : 'Ghép đôi';
+    const labels = { mc: 'Nhiều lựa chọn', tf: 'Đúng/Sai', dd: ddLabel };
+    return `
+      <div class="q-card">
+        <div class="q-card-header">
+          <div class="q-num">${i+1}</div>
+          <div class="q-text">${q.text}</div>
+          <span class="q-type-badge ${badges[q.type]}">${labels[q.type]}</span>
+          <button class="del-btn" style="margin-left:4px;" onclick="deleteQ(${i})">✕</button>
+        </div>
+        <div class="q-answers">${answersHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function deleteQ(i) {
+  questions.splice(i, 1);
+  saveData();
+  renderList();
+  showToast('Đã xóa câu hỏi');
+}
+
+function clearAll() {
+  if (!questions.length) return;
+  if (!confirm('Xóa tất cả câu hỏi?')) return;
+  questions = [];
+  saveData();
+  renderList();
+  showToast('Đã xóa tất cả');
+}
+
+// ===== QUIZ LOGIC =====
+function renderQuizStart() {
+  const info = document.getElementById('quiz-start-info');
+  const btn = document.getElementById('start-btn');
+  if (!questions.length) {
+    info.textContent = 'Chưa có câu hỏi nào. Hãy tạo câu hỏi trước!';
+    btn.disabled = true;
+  } else {
+    info.textContent = `Sẵn sàng làm ${questions.length} câu hỏi. Chúc bạn làm bài tốt!`;
+    btn.disabled = false;
+  }
+  document.getElementById('quiz-start-screen').style.display = '';
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('quiz-result').style.display = 'none';
+}
+
+function startQuiz() {
+  if (!questions.length) return;
+  quizState = { idx: 0, score: 0, answers: new Array(questions.length).fill(null), started: true };
+  document.getElementById('quiz-start-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  const screen = document.getElementById('quiz-screen');
+  const q = questions[quizState.idx];
+  const pct = ((quizState.idx) / questions.length) * 100;
+
+  let questionHtml = '';
+  if (q.type === 'mc') {
+    const keys = ['A','B','C','D','E','F'];
+    questionHtml = `<div class="quiz-options">` +
+      q.answers.map((a, i) => `
+        <div class="quiz-option" id="opt-${i}" onclick="selectMCAnswer(${i})">
+          <div class="option-key">${keys[i]}</div>
+          ${a}
+        </div>`).join('') + `</div>
+      <div style="margin-top:20px;">
+        <button class="btn btn-primary" onclick="submitMC()" style="width:100%;justify-content:center;">Xác nhận →</button>
+      </div>`;
+  } else if (q.type === 'tf') {
+    questionHtml = `<div class="quiz-options">
+      <div class="quiz-option" id="opt-true" onclick="selectTFAnswer(true)">
+        <div class="option-key">T</div> ✓ Đúng
+      </div>
+      <div class="quiz-option" id="opt-false" onclick="selectTFAnswer(false)">
+        <div class="option-key">F</div> ✗ Sai
+      </div>
+    </div>
+    <div style="margin-top:20px;">
+      <button class="btn btn-primary" onclick="submitTF()" style="width:100%;justify-content:center;">Xác nhận →</button>
+    </div>`;
+  } else {
+    const ddType = q.ddType || 'match';
+    const allRights = [...q.pairs].map(p=>p.right);
+    const shuffledRights = [...new Set(allRights)].sort(() => Math.random() - 0.5);
+
+    if (ddType === 'match') {
+      // ảnh 1: table 2-col, left=description, right=drop zone
+      questionHtml = `
+        <div class="quiz-q-label" style="margin-bottom:10px;">Kéo đáp án từ pool vào ô tương ứng</div>
+        <div class="dnd-items-pool" id="dnd-pool" onclick="returnSelectedChipToPool(this,event)" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="dropToPool(event)" style="margin-bottom:16px;">
+          ${shuffledRights.map(r => `<div class="dnd-chip" draggable="true" data-val="${r}" onclick="selectDndChip(this,event)" ondragstart="dndStart(event)" ondragend="dndEnd(event)">${r}</div>`).join('')}
+        </div>
+        <div class="quiz-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:10px 14px;background:var(--surface3);color:var(--text2);font-weight:500;border:1px solid var(--border);border-radius:0;width:55%;">Phát biểu</th>
+              <th style="text-align:left;padding:10px 14px;background:var(--surface3);color:var(--text2);font-weight:500;border:1px solid var(--border);width:45%;">Đáp án</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${q.pairs.map((p, i) => `
+            <tr>
+              <td style="padding:10px 14px;border:1px solid var(--border);color:var(--text);vertical-align:middle;">${p.left}</td>
+              <td style="padding:6px 8px;border:1px solid var(--border);vertical-align:middle;">
+                <div class="dnd-slot-zone" id="slot-${i}" data-idx="${i}" data-expect="${p.right}"
+                  ondragover="event.preventDefault();this.classList.add('drag-over')"
+                  ondragleave="this.classList.remove('drag-over')"
+                  onclick="placeSelectedChipToZone(this,event)" ondrop="dropToSlot(event,this)" style="min-height:36px;padding:4px 8px;">
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="submitDD()" style="width:100%;justify-content:center;">Xác nhận →</button>
+        </div>`;
+    }
+    else if (ddType === 'classify') {
+      // ảnh 2: pool at top, multiple target columns
+      const groups = [...new Set(q.pairs.map(p=>p.right))];
+      questionHtml = `
+        <div class="quiz-q-label" style="margin-bottom:10px;">Kéo thả vào nhóm đúng</div>
+        <div class="dnd-items-pool" id="dnd-pool" onclick="returnSelectedChipToPool(this,event)" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="dropToPool(event)" style="margin-bottom:16px;flex-wrap:wrap;">
+          ${q.pairs.map((p, i) => `<div class="dnd-chip" draggable="true" data-val="${p.left}" data-src-idx="${i}" onclick="selectDndChip(this,event)" ondragstart="dndStart(event)" ondragend="dndEnd(event)">${p.left}</div>`).join('')}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+          ${groups.map((g, gi) => `
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:8px;padding:8px 12px;background:rgba(124,106,247,0.1);border-radius:8px;text-align:center;">${g}</div>
+              <div class="dnd-slot-zone classify-zone" id="classify-zone-${gi}" data-group="${g}"
+                ondragover="event.preventDefault();this.classList.add('drag-over')"
+                ondragleave="this.classList.remove('drag-over')"
+                onclick="placeSelectedChipToClassify(this,event)" ondrop="dropToClassify(event,this)"
+                style="min-height:80px;padding:8px;flex-direction:column;align-items:flex-start;gap:6px;display:flex;flex-wrap:wrap;">
+              </div>
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="submitClassify()" style="width:100%;justify-content:center;">Xác nhận →</button>
+        </div>`;
+    }
+    else {
+      // ảnh 3: fill-in-blank — show sentence with [...] placeholder, drag words to fill
+      questionHtml = `
+        <div class="quiz-q-label" style="margin-bottom:10px;">Kéo từ/cụm từ vào ô điền</div>
+        <div class="dnd-items-pool" id="dnd-pool" onclick="returnSelectedChipToPool(this,event)" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="dropToPool(event)" style="margin-bottom:16px;flex-wrap:wrap;">
+          ${shuffledRights.map(r => `<div class="dnd-chip" draggable="true" data-val="${r}" onclick="selectDndChip(this,event)" ondragstart="dndStart(event)" ondragend="dndEnd(event)">${r}</div>`).join('')}
+        </div>
+        <div style="display:grid;gap:10px;">
+          ${q.pairs.map((p, i) => {
+            const sentenceWithBlank = p.left.replace('...', `<span id="fill-zone-${i}-placeholder" style="color:var(--text3);font-style:italic;">[___]</span>`);
+            return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);flex-wrap:wrap;">
+              <div style="flex:1;font-size:14px;line-height:1.7;color:var(--text);">${sentenceWithBlank}</div>
+              <div class="dnd-slot-zone" id="slot-${i}" data-idx="${i}" data-expect="${p.right}"
+                ondragover="event.preventDefault();this.classList.add('drag-over')"
+                ondragleave="this.classList.remove('drag-over')"
+                onclick="placeSelectedChipToZone(this,event)" ondrop="dropToSlot(event,this)"
+                style="min-width:120px;min-height:36px;flex-shrink:0;padding:4px 8px;text-align:center;">
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="submitDD()" style="width:100%;justify-content:center;">Xác nhận →</button>
+        </div>`;
+    }
+  }
+
+  screen.innerHTML = `
+    <div class="quiz-header">
+      <span class="quiz-counter">${quizState.idx + 1} / ${questions.length}</span>
+      <div class="quiz-progress"><div class="quiz-progress-bar" style="width:${pct}%"></div></div>
+    </div>
+    <div class="quiz-q-card">
+      <div class="quiz-q-label">Câu ${quizState.idx + 1} · ${q.type === 'mc' ? 'Nhiều lựa chọn' : q.type === 'tf' ? 'Đúng / Sai' : 'Kéo thả'}</div>
+      <div class="quiz-q-text">${q.text}</div>
+      ${questionHtml}
+    </div>`;
+}
+
+let selectedMC = new Set();
+let selectedTF = null;
+
+function selectMCAnswer(i) {
+  const el = document.getElementById('opt-' + i);
+  if (el.classList.contains('locked')) return;
+  el.classList.toggle('selected');
+  if (selectedMC.has(i)) selectedMC.delete(i);
+  else selectedMC.add(i);
+}
+
+function selectTFAnswer(val) {
+  selectedTF = val;
+  document.getElementById('opt-true').classList.toggle('selected', val === true);
+  document.getElementById('opt-false').classList.toggle('selected', val === false);
+}
+
+function submitMC() {
+  if (selectedMC.size === 0) { showToast('Chọn ít nhất 1 đáp án', 'error'); return; }
+  const q = questions[quizState.idx];
+  const correct = JSON.stringify([...selectedMC].sort()) === JSON.stringify([...q.correctAnswers].sort());
+  if (correct) quizState.score++;
+  quizState.answers[quizState.idx] = { selected: [...selectedMC], correct };
+
+  q.answers.forEach((_, i) => {
+    const el = document.getElementById('opt-' + i);
+    el.classList.add('locked');
+    if (q.correctAnswers.includes(i)) el.classList.add('correct');
+    else if (selectedMC.has(i)) el.classList.add('wrong');
+  });
+
+  selectedMC = new Set();
+  setTimeout(nextQuestion, 900);
+}
+
+function submitTF() {
+  if (selectedTF === null) { showToast('Chọn Đúng hoặc Sai', 'error'); return; }
+  const q = questions[quizState.idx];
+  const correct = selectedTF === q.correct;
+  if (correct) quizState.score++;
+  quizState.answers[quizState.idx] = { selected: selectedTF, correct };
+
+  const trueEl = document.getElementById('opt-true');
+  const falseEl = document.getElementById('opt-false');
+  [trueEl, falseEl].forEach(e => e.classList.add('locked'));
+  if (q.correct === true) trueEl.classList.add('correct');
+  else falseEl.classList.add('correct');
+  if (!correct) {
+    (selectedTF === true ? trueEl : falseEl).classList.add('wrong');
+  }
+  selectedTF = null;
+  setTimeout(nextQuestion, 900);
+}
+
+// DND state
+let draggedChip = null;
+let draggedFrom = null;
+
+function clearDndSelection() {
+  document.querySelectorAll('.dnd-chip.selected-chip').forEach(chip => chip.classList.remove('selected-chip'));
+  document.querySelectorAll('.tap-target-active').forEach(el => el.classList.remove('tap-target-active'));
+}
+
+function markTapTargets() {
+  clearDndSelection();
+  if (!draggedChip) return;
+  draggedChip.classList.add('selected-chip');
+  const pool = document.getElementById('dnd-pool');
+  if (pool) pool.classList.add('tap-target-active');
+  document.querySelectorAll('.dnd-slot-zone').forEach(zone => zone.classList.add('tap-target-active'));
+}
+
+function selectDndChip(el, ev) {
+  if (ev) ev.stopPropagation();
+  if (draggedChip === el) {
+    draggedChip = null;
+    clearDndSelection();
+    return;
+  }
+  draggedChip = el;
+  draggedFrom = el.parentElement;
+  markTapTargets();
+}
+
+function dndStart(e) {
+  draggedChip = e.target;
+  draggedFrom = e.target.parentElement;
+  e.target.classList.add('dragging');
+  markTapTargets();
+  if (e.dataTransfer) e.dataTransfer.setData('text', e.target.dataset.val);
+}
+function dndEnd(e) {
+  e.target.classList.remove('dragging');
+  clearDndSelection();
+}
+
+function placeSelectedChipToZone(zone, ev) {
+  if (ev) ev.stopPropagation();
+  if (!draggedChip) return;
+  const existing = zone.querySelector('.dnd-chip');
+  if (existing && existing !== draggedChip) document.getElementById('dnd-pool').appendChild(existing);
+  zone.appendChild(draggedChip);
+  draggedChip = null;
+  clearDndSelection();
+}
+
+function returnSelectedChipToPool(poolEl, ev) {
+  if (ev) ev.stopPropagation();
+  const pool = poolEl || document.getElementById('dnd-pool');
+  if (!draggedChip || !pool) return;
+  pool.appendChild(draggedChip);
+  draggedChip = null;
+  clearDndSelection();
+}
+
+function placeSelectedChipToClassify(zone, ev) {
+  if (ev) ev.stopPropagation();
+  if (!draggedChip) return;
+  zone.appendChild(draggedChip);
+  draggedChip = null;
+  clearDndSelection();
+}
+
+function dropToSlot(e, zone) {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  placeSelectedChipToZone(zone);
+}
+
+function dropToPool(e) {
+  e.preventDefault();
+  const pool = document.getElementById('dnd-pool');
+  if (pool) pool.classList.remove('drag-over');
+  returnSelectedChipToPool(pool);
+}
+
+function dropToClassify(e, zone) {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  placeSelectedChipToClassify(zone);
+}
+
+function submitDD() {
+  const q = questions[quizState.idx];
+  let correct = true;
+  q.pairs.forEach((_, i) => {
+    const slot = document.getElementById('slot-' + i);
+    const chip = slot.querySelector('.dnd-chip');
+    const expected = slot.dataset.expect;
+    if (!chip || chip.dataset.val !== expected) correct = false;
+    if (chip) {
+      chip.style.background = chip.dataset.val === expected ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.15)';
+      chip.style.borderColor = chip.dataset.val === expected ? 'var(--success)' : 'var(--error)';
+      chip.style.color = chip.dataset.val === expected ? 'var(--success)' : 'var(--error)';
+    }
+    if (!chip || chip.dataset.val !== expected) {
+      const hint = document.createElement('span');
+      hint.style.cssText = 'font-size:11px;color:var(--success);margin-left:8px;display:block;';
+      hint.textContent = '→ ' + expected;
+      slot.appendChild(hint);
+    }
+  });
+  if (correct) quizState.score++;
+  quizState.answers[quizState.idx] = { correct };
+  setTimeout(nextQuestion, 1200);
+}
+
+function submitClassify() {
+  const q = questions[quizState.idx];
+  const groups = [...new Set(q.pairs.map(p=>p.right))];
+  let correct = true;
+  // Check each item is in correct zone
+  q.pairs.forEach((p, i) => {
+    let found = false;
+    groups.forEach((g, gi) => {
+      const zone = document.getElementById('classify-zone-' + gi);
+      if (!zone) return;
+      const chips = zone.querySelectorAll('.dnd-chip');
+      chips.forEach(chip => {
+        if (chip.dataset.val === p.left) {
+          found = true;
+          const isRight = g === p.right;
+          chip.style.background = isRight ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.15)';
+          chip.style.borderColor = isRight ? 'var(--success)' : 'var(--error)';
+          chip.style.color = isRight ? 'var(--success)' : 'var(--error)';
+          if (!isRight) correct = false;
+        }
+      });
+    });
+    if (!found) correct = false;
+  });
+  // Also mark items still in pool as wrong
+  const pool = document.getElementById('dnd-pool');
+  if (pool) {
+    pool.querySelectorAll('.dnd-chip').forEach(chip => {
+      chip.style.borderColor = 'var(--error)';
+      chip.style.color = 'var(--error)';
+      correct = false;
+    });
+  }
+  if (correct) quizState.score++;
+  quizState.answers[quizState.idx] = { correct };
+  setTimeout(nextQuestion, 1200);
+}
+
+function nextQuestion() {
+  quizState.idx++;
+  selectedMC = new Set();
+  selectedTF = null;
+  if (quizState.idx >= questions.length) {
+    showResult();
+  } else {
+    renderQuizQuestion();
+  }
+}
+
+function showResult() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  const result = document.getElementById('quiz-result');
+  result.style.display = 'block';
+  const total = questions.length;
+  const score = quizState.score;
+  const pct = Math.round((score / total) * 100);
+  const wrong = total - score;
+  let emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪';
+  let msg = pct >= 80 ? 'Xuất sắc!' : pct >= 60 ? 'Khá tốt!' : 'Cần ôn luyện thêm!';
+  result.innerHTML = `
+    <div class="result-card">
+      <div style="font-size:40px;margin-bottom:8px;">${emoji}</div>
+      <div class="result-score">${pct}%</div>
+      <div class="result-label">${msg} · Điểm: ${score}/${total}</div>
+      <div class="result-breakdown">
+        <div class="result-stat">
+          <div class="result-stat-val green">${score}</div>
+          <div class="result-stat-lbl">Câu đúng</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-val red">${wrong}</div>
+          <div class="result-stat-lbl">Câu sai</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-val yellow">${total}</div>
+          <div class="result-stat-lbl">Tổng câu</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button class="btn btn-primary" onclick="startQuiz()">Làm lại →</button>
+        <button class="btn" onclick="renderQuizStart()">Về trang chủ</button>
+      </div>
+    </div>`;
+}
+
+// ===== IMPORT =====
+function handleDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFileChange(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const hint = document.getElementById('import-hint');
+  hint.innerHTML = `<span style="color:var(--accent)">⟳ Đang xử lý file "${file.name}"...</span>`;
+
+  if (file.name.endsWith('.docx')) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      mammoth.extractRawText({ arrayBuffer: e.target.result })
+        .then(result => parseQuestions(result.value, file.name))
+        .catch(err => {
+          hint.innerHTML = `<span style="color:var(--error)">Lỗi đọc file: ${err.message}</span>`;
+        });
+    };
+    reader.readAsArrayBuffer(file);
+  } else if (file.name.endsWith('.txt')) {
+    const reader = new FileReader();
+    reader.onload = function(e) { parseQuestions(e.target.result, file.name); };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    hint.innerHTML = `<span style="color:var(--error)">Chỉ hỗ trợ file .docx và .txt</span>`;
+  }
+}
+
+function parseQuestions(text, filename) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  let added = 0;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // TRUE/FALSE pattern: "N. [TF] question text → Đúng/Sai"
+    const tfMatch = line.match(/^(?:\d+[\.\)]?\s*)?\[TF\]\s*(.+?)\s*[→-]+\s*(Đúng|Sai|True|False|đúng|sai|true|false)/i);
+    if (tfMatch) {
+      const correct = ['đúng','true'].includes(tfMatch[2].toLowerCase());
+      questions.push({ id: Date.now() + i, type: 'tf', text: tfMatch[1], correct, answers: [], correctAnswers: [], pairs: [] });
+      added++;
+      i++;
+      continue;
+    }
+
+    // MULTIPLE CHOICE: "N. [MC] question" followed by "A. ans *"
+    const mcMatch = line.match(/^(?:\d+[\.\)]?\s*)?\[MC\]\s*(.+)/i);
+    if (mcMatch) {
+      const qText = mcMatch[1];
+      const answers = [], correctAnswers = [];
+      i++;
+      while (i < lines.length && /^[A-Ea-e][\.\)]\s/.test(lines[i])) {
+        const aLine = lines[i];
+        const isCorrect = aLine.includes('*');
+        const aText = aLine.replace(/^[A-Ea-e][\.\)]\s*/, '').replace(/\s*\*\s*$/, '').trim();
+        if (isCorrect) correctAnswers.push(answers.length);
+        answers.push(aText);
+        i++;
+      }
+      if (answers.length >= 2) {
+        questions.push({ id: Date.now() + i, type: 'mc', text: qText, answers, correctAnswers, pairs: [] });
+        added++;
+      }
+      continue;
+    }
+
+    // DRAG DROP: "N. [DD] question" followed by "left=right"
+    const ddMatch = line.match(/^(?:\d+[\.\)]?\s*)?\[DD\]\s*(.+)/i);
+    if (ddMatch) {
+      const qText = ddMatch[1];
+      const pairs = [];
+      i++;
+      while (i < lines.length && lines[i].includes('=')) {
+        const parts = lines[i].split('=');
+        if (parts.length === 2) {
+          pairs.push({ left: parts[0].trim(), right: parts[1].trim() });
+        }
+        i++;
+      }
+      if (pairs.length >= 2) {
+        questions.push({ id: Date.now() + i, type: 'dd', text: qText, pairs, answers: [], correctAnswers: [] });
+        added++;
+      }
+      continue;
+    }
+
+    // Auto-detect: lines starting with number + A/B/C/D options
+    const autoQ = line.match(/^(\d+)[\.\)]\s+(.+)/);
+    if (autoQ && i + 1 < lines.length && /^[A-D][\.\)]\s/.test(lines[i+1])) {
+      const qText = autoQ[2];
+      const answers = [], correctAnswers = [];
+      i++;
+      while (i < lines.length && /^[A-Da-d][\.\)]\s/.test(lines[i])) {
+        const aLine = lines[i];
+        const isCorrect = aLine.includes('*') || aLine.toLowerCase().includes('(đúng)') || aLine.toLowerCase().includes('(correct)');
+        const aText = aLine.replace(/^[A-Da-d][\.\)]\s*/, '').replace(/\s*\*\s*$/, '').replace(/\s*\(đúng\)\s*/i,'').replace(/\s*\(correct\)\s*/i,'').trim();
+        if (isCorrect) correctAnswers.push(answers.length);
+        answers.push(aText);
+        i++;
+      }
+      if (answers.length >= 2) {
+        if (correctAnswers.length === 0) correctAnswers.push(0);
+        questions.push({ id: Date.now() + i, type: 'mc', text: qText, answers, correctAnswers, pairs: [] });
+        added++;
+      }
+      continue;
+    }
+
+    i++;
+  }
+
+  saveData();
+  const hint = document.getElementById('import-hint');
+  if (added > 0) {
+    hint.innerHTML = `<span style="color:var(--success)">✓ Đã import thành công <strong>${added} câu hỏi</strong> từ "${filename}"</span><br><br>
+      <button class="btn btn-success" onclick="switchTab('list')" style="margin-top:8px;">Xem danh sách →</button>`;
+    showToast(`✦ Import ${added} câu hỏi thành công!`, 'success');
+  } else {
+    hint.innerHTML = `<span style="color:var(--warn)">⚠ Không tìm thấy câu hỏi nào. Hãy kiểm tra định dạng file.<br><br>
+      <strong>Định dạng đúng:</strong><br>
+      [MC] Câu hỏi...<br>A. Đáp án A<br>B. Đáp án B *<br><br>
+      [TF] Câu hỏi... → Đúng<br><br>
+      [DD] Câu hỏi...<br>Trái=Phải
+    </span>`;
+    showToast('Không tìm thấy câu hỏi trong file', 'error');
+  }
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// Init
+document.getElementById('q-count-badge').textContent = questions.length;
+initAnswers();
+</script>
+</body>
+</html>
